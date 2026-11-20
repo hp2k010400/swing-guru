@@ -1,0 +1,544 @@
+:root {
+  --sg-card: #ffffff;
+  --sg-green: #4f7f5f;
+  --sg-green-dark: #365b43;
+  --sg-text: #292929;
+  --sg-muted: #74746e;
+  --sg-border: #e7e5de;
+  --sg-review: #c49a45;
+  --sg-stage: #0f1211;
+  --sg-radius: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--sg-text);
+  font-family: "Source Sans Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sg-player {
+  font-size: 15px;
+  line-height: 1.4;
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 6px;
+}
+
+/* One phone-shaped column: its width follows the video, so the card and the
+   controls always line up under it. */
+.sg-column {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Wide containers: the card and controls sit beside the video so the whole
+   analysis fits one screen; phones keep the stacked phone layout. */
+.sg-player.sg-wide .sg-column {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.sg-player.sg-wide .sg-stage {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.sg-player.sg-wide .sg-side {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sg-player.sg-wide .sg-transport {
+  margin-top: 0;
+}
+
+/* ------------------------------------------------------------------ stage */
+
+.sg-stage {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  background: var(--sg-stage);
+  border-radius: var(--sg-radius);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+  aspect-ratio: 9 / 16;
+}
+
+.sg-stage video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--sg-stage);
+}
+
+.sg-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 160ms ease;
+}
+
+.sg-overlay.sg-leaving {
+  opacity: 0;
+}
+
+.sg-overlay .sg-draw {
+  transition: stroke-dashoffset 380ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.sg-overlay .sg-fade {
+  opacity: 0;
+  transition: opacity 220ms ease 180ms;
+}
+
+.sg-overlay .sg-fade-quick {
+  opacity: 0;
+  transition: opacity 200ms ease 40ms;
+}
+
+.sg-overlay.sg-in .sg-fade,
+.sg-overlay.sg-in .sg-fade-quick {
+  opacity: 1;
+}
+
+.sg-callout-text {
+  font-family: "Source Sans Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  fill: #ffffff;
+}
+
+.sg-badge {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(20, 22, 21, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Scrubber lives inside the video, like a native player. */
+.sg-track {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 14px;
+  height: 24px;
+}
+
+.sg-track-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
+  overflow: hidden;
+}
+
+.sg-track-rail span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: #ffffff;
+}
+
+.sg-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sg-tick {
+  position: absolute;
+  top: 8px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 0 1.5px rgba(15, 18, 17, 0.6);
+}
+
+.sg-tick[data-active="true"] {
+  background: #7ed49b;
+}
+
+.sg-track input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.sg-track input[type="range"]::-webkit-slider-runnable-track {
+  height: 24px;
+  background: transparent;
+}
+
+.sg-track input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.sg-track input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* -------------------------------------------------------------- controls */
+
+.sg-transport {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  margin-top: 16px;
+}
+
+.sg-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--sg-border);
+  background: var(--sg-card);
+  color: var(--sg-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sg-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sg-icon-primary {
+  width: 68px;
+  height: 68px;
+  border: 0;
+  background: var(--sg-green);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(79, 127, 95, 0.32);
+}
+
+.sg-icon-primary svg {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+  stroke: none;
+}
+
+.sg-icon-primary .sg-glyph-pause {
+  display: none;
+}
+
+.sg-player[data-state="playing"] .sg-glyph-play,
+.sg-player[data-state="holding"] .sg-glyph-play {
+  display: none;
+}
+
+.sg-player[data-state="playing"] .sg-glyph-pause,
+.sg-player[data-state="holding"] .sg-glyph-pause {
+  display: block;
+}
+
+.sg-icon:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sg-icon:focus-visible,
+.sg-speed:focus-visible,
+.sg-text-button:focus-visible,
+.sg-track input:focus-visible {
+  outline: 3px solid rgba(79, 127, 95, 0.5);
+  outline-offset: 2px;
+}
+
+.sg-subcontrols {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.sg-speeds {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: #ecebe5;
+}
+
+.sg-speed {
+  min-width: 56px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sg-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sg-speed[aria-pressed="true"] {
+  background: var(--sg-green);
+  color: #ffffff;
+}
+
+.sg-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sg-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sg-text-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------ card */
+
+.sg-card {
+  margin-top: 16px;
+  background: var(--sg-card);
+  border: 1px solid var(--sg-border);
+  border-radius: 18px;
+  padding: 16px 18px 14px;
+  min-height: 168px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.sg-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sg-phase {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sg-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.sg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dcdbd4;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.sg-dot[data-state="done"] {
+  background: #9fbfa9;
+}
+
+.sg-dot[data-state="active"] {
+  background: var(--sg-green);
+  transform: scale(1.25);
+}
+
+.sg-counter {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.sg-measure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.sg-measure-label {
+  color: var(--sg-text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sg-measure-value {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.sg-measure-value small {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--sg-muted);
+  margin-left: 3px;
+  letter-spacing: 0;
+}
+
+.sg-measure-value.sg-review {
+  color: var(--sg-review);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.sg-against {
+  margin-top: 4px;
+  color: var(--sg-muted);
+  font-size: 13.5px;
+}
+
+.sg-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  min-height: 22px;
+}
+
+.sg-provenance {
+  color: var(--sg-muted);
+  font-size: 12.5px;
+}
+
+.sg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #eef4ef;
+  color: var(--sg-green-dark);
+}
+
+.sg-chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sg-chip[data-level="uncertain"],
+.sg-chip[data-level="unmeasured"] {
+  background: #fbf3e2;
+  color: #8a6420;
+}
+
+.sg-reason {
+  color: var(--sg-muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.sg-note {
+  color: var(--sg-muted);
+  font-size: 12.5px;
+  text-align: center;
+  margin: 12px 0 0;
+}
+
+.sg-error {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--sg-review);
+  background: #fdf6e8;
+  color: var(--sg-text);
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sg-overlay,
+  .sg-overlay .sg-draw,
+  .sg-overlay .sg-fade,
+  .sg-overlay .sg-fade-quick,
+  .sg-dot {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .sg-measure-value {
+    font-size: 30px;
+  }
+  .sg-transport {
+    gap: 18px;
+  }
+  .sg-card {
+    padding: 14px 16px 12px;
+  }
+}

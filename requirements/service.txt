@@ -1,0 +1,20 @@
+# Hosted analysis service (Dockerfile). Versions match the engine validated on 2026-09-30.
+# torch/torchvision come from the PyTorch CPU index in the Dockerfile (no CUDA wheels).
+mediapipe==1.0.1
+opencv-contrib-python==5.0.0.93
+numpy==2.5.3
+onnxruntime==1.30.0
+# rtmlib==0.0.16 is installed with --no-deps in the Dockerfile: its opencv-python
+# dependency would clash with opencv-contrib-python in the same cv2 namespace.
+transformers==5.17.0
+huggingface_hub==1.33.0
+safetensors==0.8.0
+tokenizers==0.23.2
+pillow==12.3.0
+fastapi==0.142.2
+starlette==1.7.0
+pydantic==2.13.5
+uvicorn==0.54.0
+httpx==0.28.1
+PyJWT==2.15.1
+cryptography==50.0.2

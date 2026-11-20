@@ -1,0 +1,25 @@
+[server]
+address = "127.0.0.1"
+port = 8501
+headless = true
+fileWatcherType = "none"
+enableCORS = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = true
+
+# Golfer-facing palette. The analysis page is a warm off-white canvas with
+# white cards; golf green is the primary action and measurement colour.
+[theme]
+base = "light"
+primaryColor = "#4F7F5F"
+backgroundColor = "#F7F7F2"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#292929"
+linkColor = "#365B43"
+codeBackgroundColor = "#F2F1EC"
+font = "sans serif"

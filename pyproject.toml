@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swingguru-engine"
+version = "0.1.0"
+description = "Swing Guru Engine v0.1 - local experimental golf swing pose and geometry engine"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mediapipe>=1.0.0,<2",
+    # MediaPipe already depends on opencv-contrib-python. Installing
+    # opencv-python as well would put two distributions into the same `cv2`
+    # namespace, so contrib is the single OpenCV source of truth here.
+    "opencv-contrib-python>=5.0.0,<6",
+    "numpy>=2.0,<3",
+    "streamlit>=1.40,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+swingguru = "swingguru.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "integration: exercises the real MediaPipe pose model and is skipped when the model file is absent",
+]

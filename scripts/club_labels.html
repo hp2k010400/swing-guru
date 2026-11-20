@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Club Labelling</title>
+<style>
+  :root { --bg:#111418; --panel:#1b2026; --ink:#e8ecf0; --ink2:#9aa5b1; --line:#2c333b;
+          --grip:#3ddc84; --head:#ff9f1c; --accent:#4da3ff; --warn:#ffcc4d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; height:100vh; display:flex; }
+  #stage { flex:1; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  canvas#img { cursor:crosshair; max-width:100%; max-height:100%; }
+  #loupe { position:absolute; top:12px; left:12px; width:220px; height:220px; border:2px solid var(--accent);
+           border-radius:8px; background:#000; pointer-events:none; display:none; }
+  aside { width:340px; background:var(--panel); border-left:1px solid var(--line); padding:16px; overflow-y:auto; }
+  h1 { font-size:16px; margin:0 0 4px; }
+  .muted { color:var(--ink2); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+  button { background:#2a313a; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:7px 10px; cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--accent); }
+  button.on { background:var(--accent); color:#071422; border-color:var(--accent); }
+  kbd { background:#2a313a; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:12px; }
+  .bar { height:8px; background:#2a313a; border-radius:4px; overflow:hidden; }
+  .bar > div { height:100%; background:var(--grip); }
+  .step { padding:8px 10px; border-radius:6px; background:#222831; margin:6px 0; }
+  .step.now { outline:2px solid var(--accent); }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  select { background:#2a313a; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px; font:inherit; }
+  #status { font-weight:600; }
+  details { margin-top:12px; }
+  ul { padding-left:18px; margin:6px 0; }
+  #saved { font-size:12px; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="img"></canvas><canvas id="loupe" width="220" height="220"></canvas></div>
+<aside>
+  <h1>Club labelling</h1>
+  <div class="muted" id="where">Loading…</div>
+  <div class="row" style="align-items:center"><div class="bar" style="flex:1"><div id="prog"></div></div><span id="count" class="muted"></span></div>
+
+  <div class="step" id="s-grip"><span class="dot" style="background:var(--grip)"></span><b>1. Grip</b>: click the middle of the hands, where the shaft goes into them.</div>
+  <div class="step" id="s-head"><span class="dot" style="background:var(--head)"></span><b>2. Clubhead</b>: click where the shaft meets the clubhead (the hosel).</div>
+  <div class="row">
+    <button id="b-save" title="Enter">Save &amp; next <kbd>Enter</kbd></button>
+    <button id="b-undo" title="Z">Undo point <kbd>Z</kbd></button>
+  </div>
+  <div class="row">
+    <button id="b-blur" title="B">Blurred <kbd>B</kbd></button>
+    <button id="b-hidden" title="H">Head not visible <kbd>H</kbd></button>
+    <button id="b-none" title="N">No club <kbd>N</kbd></button>
+    <button id="b-skip" title="S">Can't tell <kbd>S</kbd></button>
+  </div>
+  <div>This frame: <span id="status">not labelled</span></div>
+  <div class="row">
+    <button id="b-prev">← Prev <kbd>←</kbd></button>
+    <button id="b-next">Next → <kbd>→</kbd></button>
+    <button id="b-todo">Next unlabelled <kbd>U</kbd></button>
+  </div>
+  <div class="row" style="align-items:center">
+    <span>Club in this swing:</span>
+    <select id="club">
+      <option value="">choose…</option><option>Driver / wood</option><option>Hybrid</option>
+      <option>Iron</option><option>Wedge</option><option>Not sure</option>
+    </select>
+  </div>
+  <div id="saved" class="muted"></div>
+
+  <details open>
+    <summary><b>How to label</b></summary>
+    <ul>
+      <li>Click the <b>grip</b> first, then the <b>clubhead</b>. Click again to move the nearer point.</li>
+      <li>Blurred club: if you can see the streak, click its middle at each end and press <kbd>B</kbd> to tag it blurred.</li>
+      <li>Hands visible but clubhead out of the picture or hidden behind the body: click the grip only and press <kbd>H</kbd>.</li>
+      <li>No club visible at all: press <kbd>N</kbd>. Truly can't tell: press <kbd>S</kbd>.</li>
+      <li>Use <kbd>←</kbd>/<kbd>→</kbd> to flick to the frames either side; they're 1 frame apart and help with blur.</li>
+      <li>The magnifier (top left) follows your mouse. Every save is stored straight away, so you can stop and come back.</li>
+      <li>Set the club type once per swing.</li>
+    </ul>
+  </details>
+</aside>
+<script>
+(function () {
+  var manifest, labels = { frames: {}, swings: {} }, i = 0, img = new Image(), cur = null, mouse = null;
+  var cv = document.getElementById("img"), ctx = cv.getContext("2d");
+  var lp = document.getElementById("loupe"), lctx = lp.getContext("2d");
+  function $(id) { return document.getElementById(id); }
+  function item() { return manifest.items[i]; }
+  function lab() { var id = item().id; return labels.frames[id] || (labels.frames[id] = { status: null, grip: null, head: null, blur: false }); }
+  function done(l) { return l && l.status && (l.status !== "club" || (l.grip && l.head)); }
+
+  function save() {
+    fetch("/labels.json", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(labels) })
+      .then(function (r) { $("saved").textContent = r.ok ? "Saved " + new Date().toLocaleTimeString() : "Save failed!"; })
+      .catch(function () { $("saved").textContent = "Save failed: is the labelling server still running?"; });
+  }
+
+  function fit() {
+    var st = $("stage").getBoundingClientRect();
+    var s = Math.min(st.width / img.naturalWidth, st.height / img.naturalHeight);
+    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    cv.style.width = Math.round(img.naturalWidth * s) + "px"; cv.style.height = Math.round(img.naturalHeight * s) + "px";
+  }
+
+  function marker(c, p, colour, r) {
+    c.strokeStyle = colour; c.lineWidth = Math.max(2, r / 4);
+    c.beginPath(); c.arc(p[0], p[1], r, 0, 2 * Math.PI); c.stroke();
+    c.beginPath(); c.moveTo(p[0] - r * 1.6, p[1]); c.lineTo(p[0] + r * 1.6, p[1]); c.moveTo(p[0], p[1] - r * 1.6); c.lineTo(p[0], p[1] + r * 1.6); c.stroke();
+  }
+
+  function draw() {
+    if (!img.naturalWidth) return;
+    var l = lab(), r = Math.max(5, img.naturalWidth / 90);
+    ctx.drawImage(img, 0, 0);
+    if (l.grip && l.head) {
+      ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = Math.max(1, r / 5); ctx.setLineDash([r, r]);
+      ctx.beginPath(); ctx.moveTo(l.grip[0], l.grip[1]); ctx.lineTo(l.head[0], l.head[1]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (l.grip) marker(ctx, l.grip, "#3ddc84", r);
+    if (l.head) marker(ctx, l.head, "#ff9f1c", r);
+    drawLoupe();
+    var it = item(), sw = manifest.swings[it.swing];
+    var nice = { address: "Address", mid_back: "Mid-Back", downswing: "Mid-Down" }[it.moment];
+    $("where").innerHTML = "<b>" + it.swing + "</b> · " + nice + " " + (it.offset === 0 ? "(moment frame)" : (it.offset > 0 ? "+" : "") + it.offset + " frame" + (Math.abs(it.offset) > 1 ? "s" : "")) +
+      "<br><span class='muted'>" + sw.why + (sw.why.indexOf("handed") < 0 ? " · " + sw.handedness + "-handed" : "") + " · frame " + it.frame + "</span>";
+    var n = manifest.items.filter(function (x) { return done(labels.frames[x.id]); }).length;
+    $("count").textContent = n + " / " + manifest.items.length;
+    $("prog").style.width = (100 * n / manifest.items.length) + "%";
+    var names = { club: "grip + clubhead", hidden: "grip only (head not visible)", none: "no club", skip: "can't tell" };
+    $("status").textContent = l.status ? names[l.status] + (l.blur ? ", blurred" : "") + (done(l) ? " ✓" : "") : (l.grip ? "grip set; now the clubhead" : "not labelled");
+    $("s-grip").className = "step" + (!l.grip && !l.status ? " now" : "");
+    $("s-head").className = "step" + (l.grip && !l.head && l.status !== "hidden" && l.status !== "none" ? " now" : "");
+    $("b-blur").className = l.blur ? "on" : "";
+    $("b-hidden").className = l.status === "hidden" ? "on" : "";
+    $("b-none").className = l.status === "none" ? "on" : "";
+    $("b-skip").className = l.status === "skip" ? "on" : "";
+    $("club").value = (labels.swings[it.swing] || {}).club || "";
+  }
+
+  function drawLoupe() {
+    if (!mouse) { lp.style.display = "none"; return; }
+    lp.style.display = "block";
+    var z = 4, w = lp.width / z;
+    lctx.imageSmoothingEnabled = false;
+    lctx.fillStyle = "#000"; lctx.fillRect(0, 0, lp.width, lp.height);
+    lctx.drawImage(cv, mouse[0] - w / 2, mouse[1] - w / 2, w, w, 0, 0, lp.width, lp.height);
+    lctx.strokeStyle = "#4da3ff"; lctx.lineWidth = 1;
+    lctx.beginPath(); lctx.moveTo(lp.width / 2, 0); lctx.lineTo(lp.width / 2, lp.height); lctx.moveTo(0, lp.height / 2); lctx.lineTo(lp.width, lp.height / 2); lctx.stroke();
+  }
+
+  function toImage(e) {
+    var b = cv.getBoundingClientRect();
+    return [(e.clientX - b.left) * cv.width / b.width, (e.clientY - b.top) * cv.height / b.height];
+  }
+
+  function show(n) {
+    i = Math.max(0, Math.min(manifest.items.length - 1, n));
+    img = new Image();
+    img.onload = function () { fit(); draw(); };
+    img.src = "/frames/" + item().id + ".jpg";
+    try { localStorage.setItem("club-label-pos", String(i)); } catch (e) {}
+  }
+
+  function nextTodo() {
+    for (var k = 1; k <= manifest.items.length; k++) {
+      var j = (i + k) % manifest.items.length;
+      if (!done(labels.frames[manifest.items[j].id])) return show(j);
+    }
+    $("saved").textContent = "All frames labelled. Thank you!";
+  }
+
+  function stamp(l) { l.t = new Date().toISOString(); }
+
+  cv.addEventListener("mousemove", function (e) { mouse = toImage(e); drawLoupe(); });
+  cv.addEventListener("mouseleave", function () { mouse = null; drawLoupe(); });
+  cv.addEventListener("click", function (e) {
+    var p = toImage(e).map(function (v) { return Math.round(v * 10) / 10; }), l = lab();
+    if (l.status === "none" || l.status === "skip") l.status = null;
+    if (!l.grip) l.grip = p;
+    else if (!l.head && l.status !== "hidden") l.head = p;
+    else {
+      var dg = Math.hypot(p[0] - l.grip[0], p[1] - l.grip[1]);
+      var dh = l.head ? Math.hypot(p[0] - l.head[0], p[1] - l.head[1]) : Infinity;
+      if (dg <= dh) l.grip = p; else l.head = p;
+    }
+    if (l.grip && l.head) l.status = "club";
+    stamp(l); draw(); save();
+  });
+
+  function act(what) {
+    var l = lab();
+    if (what === "save") { if (done(l)) nextTodo(); else $("saved").textContent = "Click the grip and clubhead first (or press H, N or S)."; return; }
+    if (what === "undo") { if (l.head) l.head = null; else l.grip = null; if (l.status === "club") l.status = null; }
+    if (what === "blur") l.blur = !l.blur;
+    if (what === "hidden") { if (!l.grip) { $("saved").textContent = "Click the grip first, then press H."; return; } l.head = null; l.status = "hidden"; }
+    if (what === "none") { l.grip = null; l.head = null; l.status = "none"; }
+    if (what === "skip") { l.status = "skip"; }
+    stamp(l); draw(); save();
+    if (what === "hidden" || what === "none" || what === "skip") setTimeout(nextTodo, 150);
+  }
+
+  $("b-save").onclick = function () { act("save"); };
+  $("b-undo").onclick = function () { act("undo"); };
+  $("b-blur").onclick = function () { act("blur"); };
+  $("b-hidden").onclick = function () { act("hidden"); };
+  $("b-none").onclick = function () { act("none"); };
+  $("b-skip").onclick = function () { act("skip"); };
+  $("b-prev").onclick = function () { show(i - 1); };
+  $("b-next").onclick = function () { show(i + 1); };
+  $("b-todo").onclick = nextTodo;
+  $("club").onchange = function () { labels.swings[item().swing] = { club: this.value }; save(); };
+  document.addEventListener("keydown", function (e) {
+    if (e.target.tagName === "SELECT") return;
+    var k = e.key.toLowerCase();
+    if (k === "enter" || k === " ") { e.preventDefault(); act("save"); }
+    else if (k === "z" || k === "backspace") act("undo");
+    else if (k === "b") act("blur");
+    else if (k === "h") act("hidden");
+    else if (k === "n") act("none");
+    else if (k === "s") act("skip");
+    else if (k === "u") nextTodo();
+    else if (k === "arrowleft") show(i - 1);
+    else if (k === "arrowright") show(i + 1);
+  });
+  window.addEventListener("resize", function () { fit(); draw(); });
+
+  Promise.all([fetch("/manifest.json").then(function (r) { return r.json(); }), fetch("/labels.json").then(function (r) { return r.json(); })])
+    .then(function (res) {
+      manifest = res[0]; labels = res[1]; labels.frames = labels.frames || {}; labels.swings = labels.swings || {};
+      var start = 0;
+      try { start = parseInt(localStorage.getItem("club-label-pos") || "0", 10) || 0; } catch (e) {}
+      show(start);
+    });
+})();
+</script>
+</body>
+</html>

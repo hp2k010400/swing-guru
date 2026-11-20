@@ -1,0 +1,524 @@
+/* Swing Guru viewer. The golfer is the hero; one measurement at a time. */
+
+:root {
+  /* palette */
+  --sg-bg: #f9fafa;            /* clean neutral near-white */
+  --sg-page: #eceeed;          /* around the phone on a desk */
+  --sg-surface: #ffffff;
+  --sg-ink: #1b1f1d;           /* charcoal */
+  --sg-ink-2: #6a706b;         /* secondary text */
+  --sg-ink-3: #a3a8a2;         /* tertiary / inactive */
+  --sg-line: #e6e9e7;
+  --sg-green: #2f6f4e;         /* brand green: play, links, active phase */
+  --sg-green-deep: #24563c;
+  --sg-green-soft: #e8f1eb;
+  --sg-note: #8a6420;          /* "Estimated" - quiet, not an alert */
+  --sg-stage: #0f1311;
+  --sg-glass: rgba(18, 22, 20, 0.42);
+  --sg-glass-strong: rgba(18, 22, 20, 0.58);
+
+  /* overlay (drawn on video, so a little lighter than the brand green) */
+  --sg-mark: #72c89a;
+
+  /* verdict status: good / attention / problem / information */
+  /* one meaning everywhere: green good, amber slight, coral clear issue, neutral info */
+  --sg-good: #3b9466;
+  --sg-attention: #d39a34;
+  --sg-problem: #d9664f;
+  --sg-info: #a2a79f;
+  /* the same statuses drawn on video: lighter, a little desaturated */
+  --sg-mark-good: #3ee08a;
+  --sg-mark-attention: #ffc24a;
+  --sg-mark-problem: #ff6a5c;
+
+  /* type */
+  --sg-font: -apple-system, "SF Pro Text", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --sg-caption: 600 11.5px/1.2 var(--sg-font);
+  --sg-title: 600 15px/1.25 var(--sg-font);
+  --sg-body: 400 13.5px/1.4 var(--sg-font);
+
+  /* shape and motion */
+  --sg-radius-video: 26px;
+  --sg-radius-card: 20px;
+  --sg-gap: 10px;
+  --sg-ease: cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--sg-page);
+  color: var(--sg-ink);
+  font-family: var(--sg-font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body { display: flex; align-items: center; justify-content: center; }
+
+button { font-family: inherit; }
+svg { display: block; }
+
+/* A phone on a desk; the whole screen on a real phone. */
+.device {
+  position: relative;
+  width: 402px;
+  height: min(874px, calc(100vh - 32px));
+  background: var(--sg-bg);
+  border-radius: 48px;
+  overflow: hidden;
+  box-shadow: 0 0 0 9px #141715, 0 0 0 10px #343935, 0 30px 70px rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 520px) {
+  body { display: block; }
+  .device { width: 100%; height: 100vh; height: 100dvh; border-radius: 0; box-shadow: none; }
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sg-gap);
+  padding: calc(env(safe-area-inset-top) + 10px) 10px calc(env(safe-area-inset-bottom) + 12px);
+}
+
+.screen[hidden] { display: none; }
+.screen.analysis { justify-content: center; gap: 8px; }
+.device > .screen.analysis { padding-top: calc(env(safe-area-inset-top) + 14px); }
+
+/* ---------------------------------------------------------------- video */
+
+.stage-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage {
+  position: relative;
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 9 / 16;
+  background: var(--sg-stage);
+  border-radius: var(--sg-radius-video);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.stage video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--sg-stage);
+}
+
+/* soft scrims so the glass controls read on any sky or mat */
+.stage::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.stage::before { top: 0; height: 96px; background: linear-gradient(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0)); }
+
+.loading {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.72);
+  font: var(--sg-body);
+}
+.loading[hidden] { display: none; }
+/* The loading / error layer never takes taps: the way out (top-left button) must always work,
+   including when the video fails after it started. The top HUD also sits above it. */
+.loading { pointer-events: none; }
+.hud-top { z-index: 5; }
+/* 44 px touch targets for the round HUD buttons (32 px drawn). */
+.hud-top .round { position: relative; }
+.hud-top .round::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+
+/* ------------------------------------------------------------- overlay */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
+  /* Crisp, antialiased vector geometry and label text (presentation only). */
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+}
+
+.overlay.leaving { opacity: 0; }
+/* Choreography: delays come from app.js (T) through --d. */
+/* Line draw-on runs through the Web Animations API in app.js (T); these handle opacity/scale. */
+.overlay .fade { opacity: 0; transform: translateY(4px);
+  transition: opacity 220ms ease var(--d, 680ms), transform 280ms var(--sg-ease) var(--d, 680ms); }
+.overlay .fade-early { opacity: 0; transition: opacity 220ms ease var(--d, 140ms); }
+.overlay .pop { opacity: 0; transform: scale(0.3); transform-box: fill-box; transform-origin: center;
+  transition: transform 240ms cubic-bezier(0.3, 1.45, 0.5, 1) var(--d, 600ms), opacity 140ms ease var(--d, 600ms); }
+.overlay.in .fade, .overlay.in .fade-early, .overlay.in .pop { opacity: 1; transform: none; }
+.callout-text { font: 600 12.5px var(--sg-font); fill: #fff; letter-spacing: 0.01em; }
+/* Overlay v2 (?overlay=2): tabular numerals, values beside angle arcs with a dark halo for contrast. */
+.callout-text.v2 { font: 600 13px var(--sg-font); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.value-text { font-family: var(--sg-font); font-weight: 650; fill: #fff; font-variant-numeric: tabular-nums;
+  paint-order: stroke; stroke: rgba(6,10,8,0.62); stroke-width: 3px; stroke-linejoin: round; }
+/* Overlay v3 (?overlay=3): app.js drives every element from one reveal clock, so no CSS transitions;
+   no drop-shadow filter either (re-rasterised every animated frame; the dark under-lines give the contrast). */
+.overlay.v3 { filter: none; transition: opacity 160ms ease; }
+/* v3 Address references between checkpoints: a quiet fade, never an animation that competes with a check. */
+.overlay.v3 .persist { transition: opacity 420ms ease; }
+/* v3 observation card: a quiet "Not scored" tag; the status dot stays neutral (data-status="info"). */
+.card.observation .badge { color: var(--sg-ink-2); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--sg-line); }
+
+/* ------------------------------------------------------------ glass HUD */
+
+.hud { position: absolute; left: 0; right: 0; z-index: 3; }
+.hud-top { top: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 12px 0; }
+
+.glass {
+  border: 0;
+  color: #fff;
+  background: var(--sg-glass);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.glass:active { background: var(--sg-glass-strong); }
+.round { width: 36px; height: 36px; border-radius: 50%; }
+.round.small { width: 34px; height: 34px; }
+.pill { height: 30px; min-width: 42px; padding: 0 11px; border-radius: 999px; font: 600 13px var(--sg-font); font-variant-numeric: tabular-nums; }
+.glass svg, .plain svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+
+/* where we are: phase name + one dot per swing moment */
+/* Light: the phase name is the focus, dots are quiet; only the held moment
+   shows its verdict colour. No capsule - a soft text shadow reads on any sky. */
+.where {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  color: #fff;
+  min-width: 112px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+.where-phase { font: 650 15px/1 var(--sg-font); letter-spacing: 0.005em; white-space: nowrap; }
+.phases { display: flex; gap: 7px; }
+.phases button {
+  width: 5px;
+  height: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
+  position: relative;
+}
+.phases button::after { content: ""; position: absolute; inset: -8px; } /* larger tap target */
+.phases button.done { background: rgba(255, 255, 255, 0.85); }
+.phases button.active { background: #fff; transform: scale(1.5); }
+.phases button.active[data-status="good"] { background: var(--sg-mark-good); }
+.phases button.active[data-status="attention"] { background: var(--sg-mark-attention); }
+.phases button.active[data-status="problem"] { background: var(--sg-mark-problem); }
+.phases button:disabled { opacity: 0.3; cursor: default; }
+.hud-top .glass { background: rgba(18, 22, 20, 0.28); }
+.round { width: 32px; height: 32px; }
+.pill { height: 28px; min-width: 38px; font-size: 12.5px; }
+.glass svg { width: 18px; height: 18px; stroke-width: 2; }
+
+/* controls: one slim row under the video - play, scrubber, previous / next */
+.controls { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 4px 0 2px; }
+.play {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--sg-green);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.play:active { background: var(--sg-green-deep); }
+.play svg { width: 19px; height: 19px; fill: currentColor; }
+.play .g-pause { display: none; }
+body[data-mode="playing"] .play .g-play, body[data-mode="holding"] .play .g-play { display: none; }
+body[data-mode="playing"] .play .g-pause, body[data-mode="holding"] .play .g-pause { display: block; }
+.step { flex: 0 0 auto; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: var(--sg-ink-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.step:active { background: var(--sg-green-soft); }
+.step svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+
+.track { position: relative; flex: 1 1 auto; height: 22px; margin: 0 4px; }
+.rail { position: absolute; left: 0; right: 0; top: 10px; height: 2px; border-radius: 2px; background: #dde2df; overflow: hidden; }
+.rail span { display: block; height: 100%; width: 0; background: var(--sg-green); }
+.ticks { position: absolute; inset: 0; pointer-events: none; }
+.tick { position: absolute; top: 8.5px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #c4c9c6; box-shadow: 0 0 0 2px var(--sg-bg); }
+.tick.active { background: var(--sg-green); }
+.track input { position: absolute; inset: 0; width: 100%; height: 22px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.track input::-webkit-slider-runnable-track { height: 22px; background: transparent; }
+.track input::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: 5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.22); }
+.track input::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: #fff; }
+
+/* ---------------------------------------------------------- result card */
+
+.card {
+  flex: 0 0 auto;
+  position: relative;
+  background: var(--sg-surface);
+  border-radius: var(--sg-radius-card);
+  padding: 12px 16px 13px;
+  min-height: 100px;
+  box-shadow: 0 1px 2px rgba(20, 24, 22, 0.04), 0 6px 20px rgba(20, 24, 22, 0.05);
+  transition: opacity 180ms ease;
+}
+.card.past { opacity: 0.55; }
+
+/* phase caption and one quiet dot per check at this moment */
+.card-head { display: flex; align-items: center; gap: 8px; min-height: 14px; }
+.card-head h2 { margin: 0; flex: 1; font: 600 11px/1.2 var(--sg-font); text-transform: uppercase; letter-spacing: 0.1em; color: var(--sg-ink-3); }
+.dots { display: flex; gap: 5px; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: #d3d8d5; transition: background 160ms; }
+.dot.done { background: #aab1ad; }
+.dot.active[data-status="good"] { background: var(--sg-good); }
+.dot.active[data-status="attention"] { background: var(--sg-attention); }
+.dot.active[data-status="problem"] { background: var(--sg-problem); }
+.dot.active[data-status="info"] { background: var(--sg-info); }
+
+/* the verdict is the strongest text on screen */
+.card-title-row { display: flex; align-items: center; gap: 9px; min-width: 0; margin-top: 7px; }
+.status-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--sg-info); }
+.card[data-status="good"] .status-dot { background: var(--sg-good); }
+.card[data-status="attention"] .status-dot { background: var(--sg-attention); }
+.card[data-status="problem"] .status-dot { background: var(--sg-problem); }
+.card[data-status="none"] .status-dot { display: none; }
+#card-title { font: 700 21px/1.2 var(--sg-font); letter-spacing: -0.015em; color: var(--sg-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* the measured value, quietly, at the end of the verdict line */
+.card-meta { margin-left: auto; padding-left: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: 0 0 auto; }
+.card-value { font: 600 13px/1.1 var(--sg-font); font-variant-numeric: tabular-nums; color: var(--sg-ink-2); white-space: nowrap; }
+.card-value small { display: none; }  /* the sentence carries the direction */
+.badge { font: 500 11px/1.1 var(--sg-font); color: var(--sg-ink-3); white-space: nowrap; }
+.badge[hidden] { display: none; }
+
+.card-foot { display: flex; align-items: flex-start; gap: 10px; margin-top: 4px; }
+.card-detail {
+  flex: 1;
+  margin: 0;
+  font: 400 14px/1.4 var(--sg-font);
+  color: var(--sg-ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* "what this measures": a small icon; the explanation floats above the card */
+.explain { flex: 0 0 auto; }
+.explain[hidden] { display: none; }
+.explain summary { list-style: none; cursor: pointer; color: var(--sg-green); width: 26px; height: 26px; margin: -3px -4px 0 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
+.explain summary::-webkit-details-marker { display: none; }
+.explain summary svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.explain-pop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  background: var(--sg-surface);
+  border-radius: 16px;
+  padding: 12px 16px;
+  box-shadow: 0 10px 30px rgba(20, 24, 22, 0.16);
+  font: var(--sg-body);
+  color: var(--sg-ink);
+}
+.explain-pop strong { display: block; font: var(--sg-caption); text-transform: uppercase; letter-spacing: 0.09em; color: var(--sg-ink-2); margin-bottom: 4px; }
+.explain-pop p { margin: 0; }
+.explain-pop .explain-note { margin-top: 8px; font-size: 12px; color: var(--sg-ink-2); }
+
+/* developer mode only (?dev=1): the raw verdict mapping */
+.dev-mapping { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: #f1f3f2; color: #3d4540; font: 11px/1.35 ui-monospace, Consolas, monospace; white-space: pre-wrap; max-height: 150px; overflow: auto; }
+.dev-mapping[hidden] { display: none; }
+
+/* -------------------------------------------------------------- results */
+
+.topbar { display: flex; align-items: center; gap: 8px; height: 40px; flex: 0 0 auto; }
+.topbar-title { flex: 1; text-align: center; font: 650 16px var(--sg-font); }
+.topbar-spacer { width: 36px; }
+.plain { border: 0; background: transparent; color: var(--sg-ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+
+.results-scroll { flex: 1; overflow-y: auto; padding: 2px 4px 20px; scrollbar-width: none; }
+.results-scroll::-webkit-scrollbar { display: none; }
+
+.hero { display: flex; gap: 16px; align-items: center; background: var(--sg-surface); border-radius: var(--sg-radius-card); padding: 12px; }
+.hero img { width: 76px; height: 108px; object-fit: cover; border-radius: 14px; background: var(--sg-stage); }
+.hero-stat { display: flex; align-items: baseline; gap: 8px; }
+.hero-stat + .hero-stat { margin-top: 4px; }
+.hero-stat strong { font: 700 26px var(--sg-font); letter-spacing: -0.02em; }
+.hero-stat span { color: var(--sg-ink-2); font: var(--sg-body); }
+
+.focus { margin-top: 12px; background: var(--sg-green); color: #fff; border-radius: var(--sg-radius-card); padding: 15px 16px; }
+.focus h3 { margin: 0 0 6px; font: var(--sg-caption); text-transform: uppercase; letter-spacing: 0.09em; opacity: 0.85; }
+.focus .headline { font: 650 18px var(--sg-font); }
+.focus p { margin: 6px 0 0; font: var(--sg-body); opacity: 0.95; }
+.focus .note { font-size: 12.5px; opacity: 0.8; }
+.focus button { margin-top: 12px; border: 0; background: rgba(255, 255, 255, 0.18); color: #fff; border-radius: 999px; padding: 8px 14px; font: 600 13px var(--sg-font); cursor: pointer; }
+.focus.empty { background: var(--sg-surface); color: var(--sg-ink); }
+.focus.empty h3 { color: var(--sg-ink-2); }
+.focus .observation { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--sg-line); font-size: 13px; color: var(--sg-ink-2); }
+
+.section-title { margin: 22px 4px 8px; font: var(--sg-caption); text-transform: uppercase; letter-spacing: 0.09em; color: var(--sg-ink-2); }
+
+.group { background: var(--sg-surface); border-radius: var(--sg-radius-card); padding: 2px 14px; margin-bottom: 10px; }
+.group-head { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0 6px; }
+.group-head strong { font: 650 15px var(--sg-font); }
+.group-head span { font: 500 12px var(--sg-font); color: var(--sg-ink-3); }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--sg-line); }
+.row-main { flex: 1; min-width: 0; }
+.row-title { font: 600 14px var(--sg-font); display: flex; align-items: center; gap: 7px; }
+.row-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--sg-info); }
+.row-dot[data-status="good"] { background: var(--sg-good); }
+.row-dot[data-status="attention"] { background: var(--sg-attention); }
+.row-dot[data-status="problem"] { background: var(--sg-problem); }
+.row-detail { font: 400 12.5px/1.35 var(--sg-font); color: var(--sg-ink-2); margin-top: 2px; }
+.row-value { font: 700 17px var(--sg-font); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.row-value small { display: block; font: 500 11.5px var(--sg-font); color: var(--sg-ink-2); }
+.replay { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--sg-green-soft); color: var(--sg-green-deep); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 auto; padding: 0; }
+.replay svg { width: 14px; height: 14px; fill: currentColor; }
+.group .empty-row { padding: 10px 0 12px; border-top: 1px solid var(--sg-line); font-size: 13px; color: var(--sg-ink-2); }
+
+.footnote { color: var(--sg-ink-2); font-size: 12.5px; margin: 8px 4px 16px; line-height: 1.4; }
+.primary-btn { width: 100%; border: 0; border-radius: 16px; padding: 14px; background: var(--sg-green); color: #fff; font: 650 15px var(--sg-font); cursor: pointer; }
+
+button:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid rgba(47, 111, 78, 0.55); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay, .overlay .draw, .overlay .fade, .overlay .fade-early, .overlay .pop, .dot, .phases button, .card { transition: none !important; }
+}
+
+/* ------------------------------------------------- review layout (?review=1) */
+/* The human review pack shows exactly the phone product, full height of the
+   window, never widened by the review tooling around it. */
+html.review body { display: block; background: var(--sg-bg); }
+html.review .device { width: min(440px, 100vw); height: 100vh; height: 100dvh; margin: 0 auto; border-radius: 0; box-shadow: none; }
+
+/* ---------------------------------------------------------- capture (?overlay=3&capture=1)
+   Staging-only video export (scripts/export_replay_video.py): a clean 9:16 frame for social video.
+   The video fills the frame, controls are hidden, and the checkpoint card floats over the top of the
+   picture (usually sky in a down-the-line clip) as a dark translucent card. Nothing here applies
+   without the capture class. */
+html.capture, html.capture body { background: #0d1210; }
+html.capture body { display: block; }
+html.capture .device { width: 100vw; height: 100vh; border-radius: 0; box-shadow: none; background: #0d1210; }
+html.capture .screen.analysis { padding: 0; gap: 0; }
+html.capture .stage-wrap { flex: 1 1 auto !important; }
+html.capture .stage { border-radius: 0; }
+html.capture .controls, html.capture .hud-top .round, html.capture #speed, html.capture .explain,
+html.capture .card .dots { display: none !important; }
+html.capture .hud-top { justify-content: center; padding-top: 18px; }
+html.capture .card {
+  position: absolute; left: 12px; right: 12px; top: 58px; z-index: 6; min-height: 0;
+  background: rgba(13, 18, 16, 0.74); color: #fff; border-radius: 14px; padding: 8px 12px 9px;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: none;
+}
+/* Moved below the golfer when the top would cover the measurement (app.js placeCaptureCard). */
+html.capture .card.bottom { top: auto; bottom: 16px; }
+html.capture .card[data-status="none"] { display: none; }
+/* Compact hierarchy: phase caption, then the verdict (bold) with the value on the right, then one
+   short explanation that wraps (never clipped). */
+html.capture .card-head { min-height: 0; }
+html.capture .card-head h2 { color: rgba(255, 255, 255, 0.6); font: 600 9.5px/1.15 var(--sg-font); letter-spacing: 0.1em; }
+html.capture .card-title-row { margin-top: 3px; gap: 7px; align-items: center; }
+html.capture .status-dot { width: 7px; height: 7px; }
+html.capture #card-title { color: #fff; font: 700 17px/1.18 var(--sg-font); letter-spacing: -0.01em;
+  white-space: normal; overflow: visible; text-overflow: clip; }
+html.capture .card-meta { gap: 1px; padding-left: 8px; }
+html.capture .card-value { color: #fff; font: 650 15px/1.1 var(--sg-font); font-variant-numeric: tabular-nums; }
+html.capture .badge { color: rgba(255, 255, 255, 0.72); font: 500 9.5px/1.1 var(--sg-font); }
+html.capture .card.observation .badge { color: rgba(255, 255, 255, 0.78); border-color: rgba(255, 255, 255, 0.3); padding: 1px 6px; }
+html.capture .card-foot { margin-top: 2px; }
+html.capture .card-detail { color: rgba(255, 255, 255, 0.72); font: 400 11.5px/1.32 var(--sg-font);
+  display: block; -webkit-line-clamp: unset; overflow: visible; }
+html.capture .card.past { opacity: 0; transition: opacity 260ms ease; }
+/* The walkthrough's payoff: the stored Swing Score (never re-scored). */
+.capture-score { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px; background: rgba(13, 18, 16, 0.62); opacity: 0; transition: opacity 420ms ease; color: #fff; }
+.capture-score.in { opacity: 1; }
+.capture-score .label { font: 600 12px/1 var(--sg-font); letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.72); }
+.capture-score .ring { position: relative; width: 168px; height: 168px; }
+.capture-score .ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.capture-score .num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 700 52px/1 var(--sg-font); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.capture-score .num small { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.6); margin-left: 3px; margin-top: 18px; }
+.capture-score .sub { font: 500 14px/1.3 var(--sg-font); color: rgba(255,255,255,0.78); }
+.capture-score .brand { position: absolute; bottom: 36px; font: 650 15px/1 var(--sg-font); letter-spacing: 0.02em; color: rgba(255,255,255,0.85); }
+html.capture .where-phase { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55); }
+html.capture .phases button:not(.active) { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18); }
+
+/* ---------------------------------------------------------------- 1.0.1: ?theme=dark (app appearance)
+   Only the page around the video changes: the stage, the video and every overlay colour stay as they are. */
+html[data-theme="dark"] {
+  --sg-bg: #0a0e0c;
+  --sg-page: #0a0e0c;
+  --sg-surface: #121816;
+  --sg-ink: #f1f4f2;
+  --sg-ink-2: #a3ada7;
+  --sg-ink-3: #6f7a74;
+  --sg-line: rgba(255, 255, 255, 0.08);
+  --sg-green: #4aa577;
+  --sg-green-deep: #7fcfa2;
+  --sg-green-soft: #15281e;
+  --sg-note: #d6b56a;
+  --sg-good: #4fbf85;
+  --sg-attention: #e3a948;
+  --sg-problem: #ea7a62;
+  --sg-info: #7c8680;
+  color-scheme: dark;
+}
+html[data-theme="dark"] .rail { background: rgba(255, 255, 255, 0.12); }
+html[data-theme="dark"] .tick { background: rgba(255, 255, 255, 0.28); }
+html[data-theme="dark"] .dot { background: rgba(255, 255, 255, 0.16); }
+html[data-theme="dark"] .dot.done { background: rgba(255, 255, 255, 0.4); }
+html[data-theme="dark"] .card { border: 1px solid var(--sg-line); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+html[data-theme="dark"] .dev-mapping { background: #18201d; color: #a3ada7; }
+html[data-theme="dark"] button:focus-visible, html[data-theme="dark"] summary:focus-visible { outline-color: rgba(74, 165, 119, 0.6); }
+
+/* ---------------------------------------------------------------- 1.0.1: ?cards=simple
+   One status dot and one plain sentence: no phase line, label, value, badge or explanation. */
+html.simple-cards .card-head,
+html.simple-cards .card-meta,
+html.simple-cards .card-foot { display: none; }
+/* No numbers on the video: the degree / percentage values go. The pill stays with a short plain label
+   (app.js simpleLabel), and every measurement line and reference stays exactly as drawn. */
+html.simple-cards #overlay .value-text { display: none; }
+/* One height for every sentence (one or two lines), so the card never jumps between checkpoints. */
+html.simple-cards .card { min-height: 84px; padding-top: 18px; padding-bottom: 18px; display: flex; flex-direction: column; justify-content: center; }
+html.simple-cards .card-title-row { align-items: flex-start; gap: 12px; margin-top: 0; }
+html.simple-cards .card-title-row .status-dot { margin-top: 8px; flex: none; width: 10px; height: 10px; }
+html.simple-cards #card-title { font: 500 16.5px/1.38 var(--sg-font); letter-spacing: -0.01em; color: var(--sg-ink);
+  white-space: normal; overflow: visible; text-overflow: clip; }

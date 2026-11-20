@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["SwingTrimModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.swingtrim.SwingTrimModule"]
+  }
+}

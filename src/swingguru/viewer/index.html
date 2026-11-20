@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f9fafa" />
+    <title>Swing Guru</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <div class="device" id="device">
+      <!-- ============================== Analysis screen -->
+      <section class="screen analysis" id="screen-analysis" aria-label="Swing walkthrough">
+        <div class="stage-wrap" id="stage-wrap">
+          <div class="stage" id="stage">
+            <video id="video" playsinline muted preload="auto"></video>
+            <svg id="overlay" class="overlay" aria-hidden="true"></svg>
+
+            <!-- Top of the video: results, where we are, speed. -->
+            <div class="hud hud-top">
+              <button class="glass round" id="to-results" aria-label="Show all results">
+                <svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9" /></svg>
+              </button>
+              <div class="where" aria-live="polite">
+                <span class="where-phase" id="phase-pill">Your swing</span>
+                <nav class="phases" id="phases" aria-label="Swing moments"></nav>
+              </div>
+              <button class="glass pill" id="speed" aria-label="Playback speed 1×">1×</button>
+            </div>
+
+            <div class="loading" id="loading">Loading swing…</div>
+          </div>
+        </div>
+
+        <!-- One slim row under the video: nothing covers the ball or the club. -->
+        <div class="controls" id="controls">
+          <button class="play" id="play" aria-label="Play">
+            <svg class="g-play" viewBox="0 0 24 24"><path d="M9 6.8v10.4c0 .6.7 1 1.2.7l8-5.2c.5-.3.5-1 0-1.4l-8-5.2c-.5-.3-1.2 0-1.2.7z" /></svg>
+            <svg class="g-pause" viewBox="0 0 24 24"><rect x="7.5" y="6" width="3.2" height="12" rx="1" /><rect x="13.3" y="6" width="3.2" height="12" rx="1" /></svg>
+          </button>
+          <div class="track">
+            <div class="rail"><span id="progress"></span></div>
+            <div class="ticks" id="ticks"></div>
+            <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek through the swing" />
+          </div>
+          <button class="step" id="prev" aria-label="Previous check">
+            <svg viewBox="0 0 24 24"><path d="M14.5 6.5L9 12l5.5 5.5" /></svg>
+          </button>
+          <button class="step" id="next" aria-label="Next check">
+            <svg viewBox="0 0 24 24"><path d="M9.5 6.5L15 12l-5.5 5.5" /></svg>
+          </button>
+        </div>
+
+        <!-- The current check: phase, verdict (strongest), one sentence, then the value quietly. -->
+        <article class="card" id="card" data-status="info" aria-live="polite">
+          <div class="card-head">
+            <h2 id="card-phase">Swing analysis</h2>
+            <div class="dots" id="dots"></div>
+          </div>
+          <div class="card-title-row">
+            <span class="status-dot" id="card-status" aria-hidden="true"></span>
+            <span id="card-title">Press play</span>
+            <span class="card-meta">
+              <span class="card-value" id="card-value"></span>
+              <span class="badge" id="card-badge" hidden>Estimated</span>
+            </span>
+          </div>
+          <div class="card-foot">
+            <p class="card-detail" id="card-detail">We'll pause at each key moment and show one check at a time.</p>
+            <details class="explain" id="explain" hidden>
+              <summary aria-label="What this measures">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+              </summary>
+              <div class="explain-pop"><strong id="explain-title">What this measures</strong><p id="explain-text"></p>
+                <p class="explain-note" id="explain-note"></p></div>
+            </details>
+          </div>
+          <pre class="dev-mapping" id="dev-mapping" hidden></pre>
+        </article>
+      </section>
+
+      <!-- ============================== Results screen -->
+      <section class="screen results" id="screen-results" aria-label="Results" hidden>
+        <header class="topbar">
+          <button class="round plain" id="back-to-video" aria-label="Back to the video">
+            <svg viewBox="0 0 24 24"><path d="M14.5 6.5L9 12l5.5 5.5" /></svg>
+          </button>
+          <div class="topbar-title">Your swing</div>
+          <span class="topbar-spacer"></span>
+        </header>
+        <div class="results-scroll">
+          <div class="hero">
+            <img id="hero-thumb" alt="" />
+            <div>
+              <div class="hero-stat"><strong id="stat-checks">0</strong><span>measurements</span></div>
+              <div class="hero-stat"><strong id="stat-phases">6</strong><span>swing moments</span></div>
+            </div>
+          </div>
+
+          <section class="focus" id="focus">
+            <h3>Your main focus</h3>
+            <div id="focus-body"></div>
+          </section>
+
+          <h3 class="section-title">What we measured</h3>
+          <div id="groups"></div>
+          <p class="footnote" id="footnote"></p>
+          <button class="primary-btn" id="watch-again">Watch the walkthrough again</button>
+        </div>
+      </section>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>

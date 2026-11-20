@@ -1,0 +1,61 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development"
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview"
+    },
+    "production": {
+      "autoIncrement": true,
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_OVERLAY_VERSION": "3"
+      }
+    },
+    "testflight": {
+      "distribution": "store",
+      "environment": "preview",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://swing-guru-staging-production.up.railway.app",
+        "EXPO_PUBLIC_AUTH_MODE": "dev",
+        "EXPO_PUBLIC_OVERLAY_VERSION": "3",
+        "EXPO_PUBLIC_BILLING": "off",
+        "EXPO_PUBLIC_REMINDER_TEST_SECONDS": "60"
+      }
+    },
+    "staging": {
+      "distribution": "store",
+      "environment": "preview",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "staging",
+        "EXPO_PUBLIC_API_URL": "https://swing-guru-staging-production.up.railway.app",
+        "EXPO_PUBLIC_AUTH_MODE": "dev",
+        "EXPO_PUBLIC_OVERLAY_VERSION": "3",
+        "EXPO_PUBLIC_BILLING": "off",
+        "EXPO_PUBLIC_REMINDER_TEST_SECONDS": "60"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6818093492"
+      }
+    },
+    "testflight": {
+      "ios": {
+        "ascAppId": "6818093492"
+      }
+    }
+  }
+}

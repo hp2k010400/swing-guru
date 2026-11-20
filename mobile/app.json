@@ -1,0 +1,103 @@
+{
+  "expo": {
+    "name": "Swing Guru",
+    "slug": "swing-guru",
+    "version": "1.0.8",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "swingguru",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.swingguru.app",
+      "supportsTablet": false,
+      "icon": "./assets/images/icon.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "usesAppleSignIn": true
+    },
+    "android": {
+      "package": "com.swingguru.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0E0C",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F9FAFA",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76,
+          "dark": {
+            "backgroundColor": "#0A0E0C",
+            "image": "./assets/images/splash-icon.png"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Swing Guru opens the swing videos you choose so it can analyse them.",
+          "cameraPermission": "Swing Guru uses the camera to record your golf swing for analysis.",
+          "microphonePermission": "Swing Guru records audio with your swing video. You can turn the sound off in the video if you prefer."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Swing Guru uses the camera to record your golf swing for analysis.",
+          "microphonePermission": "Swing Guru records audio with your swing video. You can turn the sound off in the video if you prefer.",
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-sqlite",
+      "expo-video",
+      "expo-apple-authentication",
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "2096943041695834",
+          "clientToken": "19cc6547b92e71b76bbe720df2a8334a",
+          "displayName": "Swing Guru",
+          "scheme": "fb2096943041695834",
+          "isAutoInitEnabled": true,
+          "autoLogAppEventsEnabled": true,
+          "advertiserIDCollectionEnabled": false,
+          "iosUserTrackingPermission": false
+        }
+      ],
+      "./plugins/without-push-entitlement",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#0A0E0C"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2b6643fd-011c-4077-87a6-5e50828360a7"
+      }
+    },
+    "owner": "hp2k010400"
+  }
+}

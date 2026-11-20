@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Swing Guru guided playback</title>
+    <link rel="stylesheet" href="./player.css" />
+  </head>
+  <body>
+    <div class="sg-player" id="sg-player" data-state="ready">
+      <div class="sg-column" id="sg-column">
+        <div class="sg-stage" id="sg-stage">
+          <video id="sg-video" playsinline muted preload="auto"></video>
+          <svg id="sg-overlay" class="sg-overlay" aria-hidden="true"></svg>
+          <div class="sg-badge" id="sg-badge" data-kind="ready" hidden></div>
+          <div class="sg-track">
+            <div class="sg-track-rail"><span id="sg-progress"></span></div>
+            <div class="sg-ticks" id="sg-ticks" aria-hidden="true"></div>
+            <input
+              id="sg-seek"
+              type="range"
+              min="0"
+              max="1000"
+              value="0"
+              step="1"
+              aria-label="Seek through the swing"
+            />
+          </div>
+        </div>
+
+        <div class="sg-side" id="sg-side">
+        <div class="sg-transport">
+          <button class="sg-icon" id="sg-prev" aria-label="Previous check">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <button class="sg-icon sg-icon-primary" id="sg-play" aria-label="Play the guided walkthrough">
+            <svg class="sg-glyph-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" /></svg>
+            <svg class="sg-glyph-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /></svg>
+          </button>
+          <button class="sg-icon" id="sg-next" aria-label="Next check">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+
+        <div class="sg-subcontrols">
+          <div class="sg-speeds" role="group" aria-label="Playback speed">
+            <button class="sg-speed" data-speed="0.25" aria-pressed="false" aria-label="Quarter speed">0.25x</button>
+            <button class="sg-speed" data-speed="0.5" aria-pressed="false" aria-label="Half speed">0.5x</button>
+            <button class="sg-speed" data-speed="1" aria-pressed="true" aria-label="Normal speed">1x</button>
+          </div>
+          <button class="sg-text-button" id="sg-replay" aria-label="Replay from the start">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" /></svg>
+            Replay
+          </button>
+        </div>
+
+        <section class="sg-card" id="sg-card" aria-live="polite">
+          <div class="sg-card-top">
+            <h2 class="sg-phase" id="sg-phase">Swing walkthrough</h2>
+            <div class="sg-dots" id="sg-dots"></div>
+          </div>
+          <div class="sg-measure">
+            <span class="sg-measure-label" id="sg-label">Press play</span>
+            <span class="sg-measure-value" id="sg-value"></span>
+          </div>
+          <div class="sg-against" id="sg-against">The video pauses at each estimated moment.</div>
+          <div class="sg-meta">
+            <span class="sg-provenance" id="sg-provenance"></span>
+            <span class="sg-chip" id="sg-tracking" hidden></span>
+          </div>
+          <div class="sg-reason" id="sg-reason" hidden></div>
+        </section>
+
+        <p class="sg-note" id="sg-note"></p>
+        <p class="sg-error" id="sg-error" hidden></p>
+        </div>
+      </div>
+    </div>
+    <script src="./player.js"></script>
+  </body>
+</html>
