@@ -21,7 +21,7 @@ Analysis engine (src/swingguru)
   1. Pose: RTMW whole-body keypoints via ONNX Runtime (MediaPipe as fallback / segmentation)
   2. Swing window: find the swing inside a longer clip
   3. Moments: 7 positions (Address, Takeaway, Mid-Back, Top, Mid-Down, Impact, Finish)
-     from the measured hand path; benchmarked against SwingNet (GolfDB)
+     from the measured hand path
   4. Club: classical shaft tracker; OWLv2 open-vocabulary detection only on key
      frames the tracker cannot confirm
   5. Measurements: deterministic, aspect-corrected 2D geometry with validity and
@@ -51,7 +51,7 @@ Results, swing history, side-by-side compare, drills and progress in the app
 | `tests/` | pytest suite |
 | `supabase/` | database migrations |
 | `docs/` | engine, measurement and moment-detection docs; deployment guide |
-| `third_party/golfdb/` | SwingNet benchmark code only (CC BY-NC 4.0, not used by the product; weights not included) |
+| `third_party/golfdb/` | SwingNet research code kept for future benchmarking (CC BY-NC 4.0, not used by the product; weights not included) |
 
 ## Run the engine locally
 
